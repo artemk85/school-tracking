@@ -2,7 +2,6 @@ package com.artemk.schooltracking.service;
 
 import com.artemk.schooltracking.domain.Settings;
 import com.artemk.schooltracking.repository.SettingsRepository;
-import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,15 +13,6 @@ public class SettingsService {
 
     public SettingsService(SettingsRepository settingsRepository) {
         this.settingsRepository = settingsRepository;
-    }
-
-    @PostConstruct
-    void init() {
-        if (settingsRepository.findById(SETTINGS_ID).isEmpty()) {
-            Settings settings = new Settings();
-            settings.setId(SETTINGS_ID);
-            settingsRepository.save(settings);
-        }
     }
 
     public Settings get() {

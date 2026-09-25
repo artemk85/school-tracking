@@ -3,7 +3,6 @@ package com.artemk.schooltracking.service;
 import com.artemk.schooltracking.domain.Subject;
 import com.artemk.schooltracking.dto.SubjectDto;
 import com.artemk.schooltracking.repository.SubjectRepository;
-import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,27 +17,6 @@ public class SubjectService {
 
     public SubjectService(SubjectRepository subjectRepository) {
         this.subjectRepository = subjectRepository;
-    }
-
-    @PostConstruct
-    void init() {
-        seed("Математика", true);
-        seed("Русский язык", true);
-        seed("Литература", false);
-        seed("История", false);
-        seed("Биология", false);
-        seed("География", false);
-        seed("Физика", false);
-        seed("Химия", false);
-        seed("Английский язык", false);
-        seed("Информатика", false);
-        seed("Физкультура", false);
-    }
-
-    private void seed(String name, boolean core) {
-        if (subjectRepository.findByNameIgnoreCase(name).isEmpty()) {
-            subjectRepository.save(new Subject(name, core));
-        }
     }
 
     public List<SubjectDto> findAll() {

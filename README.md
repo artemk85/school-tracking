@@ -26,6 +26,8 @@ Backend: **Spring Boot 3 (Java 17) + PostgreSQL**. UI: **React (Vite)**.
 
 ```
 backend/    Spring Boot: REST API, JPA, PostgreSQL
+  src/main/resources/schema.sql   создание таблиц
+  src/main/resources/data.sql     начальные предметы и настройки
 frontend/   React + Vite UI
 docker-compose.yml   PostgreSQL
 ```
@@ -38,13 +40,33 @@ API:
 
 ## Запуск
 
-### 1. База данных
+### Вариант A. Всё в Docker (рекомендуется)
+
+Соберёт и поднимет три контейнера: `db`, `backend`, `frontend`.
+
+```bash
+cp .env.example .env          # при необходимости задайте DB_PASSWORD
+docker compose up -d --build
+```
+
+* UI — https://localhost (nginx, HTTPS на порту 443; HTTP 80 редиректит на HTTPS)
+* API — https://localhost/api/... (nginx проксирует на backend:8080)
+* PostgreSQL — localhost:5432
+
+Сертификат самоподписанный, поэтому браузер покажет предупреждение — примите его
+(«Дополнительно» → «Перейти на сайт»). Проверка через `curl`: `curl -k https://localhost/`.
+
+Остановить: `docker compose down` (с данными) или `docker compose down -v` (удалить том БД).
+
+### Вариант B. Локальная разработка
+
+#### 1. База данных
 
 ```bash
 docker compose up -d db
 ```
 
-### 2. Backend (порт 8080)
+#### 2. Backend (порт 8080)
 
 ```bash
 cd backend
@@ -53,7 +75,7 @@ cd backend
 
 Переменные окружения (по умолчанию): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `SERVER_PORT`.
 
-### 3. Frontend (порт 5173)
+#### 3. Frontend (порт 5173)
 
 ```bash
 cd frontend
@@ -62,6 +84,31 @@ npm run dev
 ```
 
 Откройте http://localhost:5173 — запросы к `/api` проксируются на backend.
+
+## Docker
+
+* `backend/Dockerfile` — multi-stage: `maven:3.9.9-eclipse-temurin-21` собирает jar,
+  затем `eclipse-temurin:21-jre` запускает приложение от непривилегированного пользователя.
+* `frontend/Dockerfile` — multi-stage: `node:20-alpine` собирает статику Vite,
+  `alpine` генерирует самоподписанный TLS-сертификат на 10 лет,
+  `nginx:1.27-alpine` раздаёт статику по HTTPS и проксирует `/api/` на сервис `backend`.
+* `frontend/nginx.conf` — редирект HTTP → HTTPS, TLS 1.2/1.3, SPA-fallback
+  (`try_files ... /index.html`) и reverse-proxy `/api/`.
+* `docker-compose.yml` — сервисы `db` (с healthcheck), `backend` (ждёт готовности БД, свой healthcheck)
+  и `frontend` (порты 80 и 443); пароль БД берётся из `.env` (`DB_PASSWORD`, по умолчанию `school`).
+
+> Требуется **Java 21** (Spring Boot 3 совместим с 17+, но проект настроен на LTS 21).
+> Сертификат генерируется при сборке образа; для продакшена замените его на
+> сертификат от доверенного центра (например, Let's Encrypt) или смонтируйте свой
+> в `/etc/nginx/certs/server.crt` и `/etc/nginx/certs/server.key`.
+
+Собрать образы отдельно:
+
+```bash
+docker compose build            # оба образа
+docker compose build backend    # только backend
+docker compose build frontend   # только frontend
+```
 
 ## Тесты
 
