@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:16-alpine
     container_name: school-tracking-db
+    networks:
+      - school-tracking
     environment:
       POSTGRES_DB: school_tracking
       POSTGRES_USER: school
@@ -20,6 +22,8 @@ services:
     build:
       context: ./backend
     container_name: school-tracking-backend
+    networks:
+      - school-tracking
     environment:
       DB_URL: jdbc:postgresql://db:5432/school_tracking
       DB_USER: school
@@ -41,11 +45,20 @@ services:
     build:
       context: ./frontend
     container_name: school-tracking-frontend
+    networks:
+      - school-tracking
     depends_on:
       - backend
     ports:
       - "80:80"
       - "443:443"
+
+networks:
+  school-tracking:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.240.0/24
 
 volumes:
   school_tracking_data:

@@ -7,12 +7,14 @@ import com.artemk.schooltracking.dto.GradeDto;
 import com.artemk.schooltracking.dto.GradeRequest;
 import com.artemk.schooltracking.repository.GradeRepository;
 import com.artemk.schooltracking.repository.SubjectRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class GradeService {
 
@@ -32,6 +34,7 @@ public class GradeService {
     }
 
     public List<GradeDto> findAll() {
+        log.debug("Fetching all grades");
         Settings settings = settingsService.get();
         return gradeRepository.findAll().stream()
                 .sorted((a, b) -> b.getGradeDate().compareTo(a.getGradeDate()))
@@ -40,6 +43,8 @@ public class GradeService {
     }
 
     public GradeDto create(GradeRequest request) {
+        log.debug("Creating grade: subjectId={}, value={}, date={}",
+                request.subjectId(), request.value(), request.gradeDate());
         Subject subject = subjectRepository.findById(request.subjectId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Предмет не найден"));
         Grade grade = new Grade(subject, request.value(), request.gradeDate());
@@ -48,6 +53,8 @@ public class GradeService {
     }
 
     public GradeDto update(Long id, GradeRequest request) {
+        log.debug("Updating grade {}: subjectId={}, value={}, date={}",
+                id, request.subjectId(), request.value(), request.gradeDate());
         Grade grade = gradeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Оценка не найдена"));
         Subject subject = subjectRepository.findById(request.subjectId())
@@ -59,6 +66,7 @@ public class GradeService {
     }
 
     public void delete(Long id) {
+        log.debug("Deleting grade {}", id);
         if (!gradeRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Оценка не найдена");
         }

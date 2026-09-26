@@ -183,3 +183,16 @@ tbody tr { border-top: 1px solid var(--border); }
 .error.box { padding: 12px; border: 1px solid var(--neg); border-radius: 8px; margin-bottom: 16px; }
 
 .note { margin-top: 16px; line-height: 1.5; }
+
+.week-nav {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+tfoot .total-row td {
+  border-top: 2px solid var(--border);
+  padding-top: 12px;
+  font-size: 15px;
+}

@@ -25,6 +25,7 @@ export const api = {
   deleteGrade: (id) => request(`/grades/${id}`, { method: 'DELETE' }),
 
   weekReport: (date) => request(`/report/week${date ? `?date=${date}` : ''}`),
+  allStats: () => request('/stats/all'),
   settings: () => request('/settings'),
   saveSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
 };

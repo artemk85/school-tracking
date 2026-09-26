@@ -169,6 +169,50 @@ function SubjectsTab({ subjects, reload }) {
   );
 }
 
+function StatsTab({ stats }) {
+  if (!stats || stats.weeks.length === 0) {
+    return (
+      <section className="card">
+        <h2>Статистика за все периоды</h2>
+        <p className="muted">Пока нет данных.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card">
+      <h2>Статистика за все периоды</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Неделя</th>
+            <th>Оценок</th>
+            <th>Итого</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stats.weeks.map((w) => (
+            <tr key={w.weekStart}>
+              <td>{formatDate(w.weekStart)} — {formatDate(w.weekEnd)}</td>
+              <td>{w.gradeCount}</td>
+              <td className={w.total < 0 ? 'neg' : 'pos'}>{money(w.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="total-row">
+            <td><strong>Итого ({stats.totalGrades} оценок)</strong></td>
+            <td></td>
+            <td className={stats.grandTotal < 0 ? 'neg' : 'pos'}>
+              <strong>{money(stats.grandTotal)}</strong>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  );
+}
+
 function SettingsTab({ settings, reload }) {
   const [form, setForm] = useState(settings);
   const [saved, setSaved] = useState(false);
@@ -226,14 +270,23 @@ export default function App() {
   const [subjects, setSubjects] = useState([]);
   const [report, setReport] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const weekDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + weekOffset * 7);
+    return d.toISOString().slice(0, 10);
+  }, [weekOffset]);
 
   async function reload() {
     try {
-      const [s, r, cfg] = await Promise.all([api.subjects(), api.weekReport(), api.settings()]);
+      const [s, r, cfg, st] = await Promise.all([api.subjects(), api.weekReport(weekDate), api.settings(), api.allStats()]);
       setSubjects(s);
       setReport(r);
       setSettings(cfg);
+      setStats(st);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -242,7 +295,7 @@ export default function App() {
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [weekDate]);
 
   const totalClass = report && report.total < 0 ? 'neg' : 'pos';
 
@@ -257,6 +310,13 @@ export default function App() {
           <div className="total">
             <span className="muted">Итого за неделю</span>
             <strong className={totalClass}>{money(report.total)}</strong>
+            <div className="week-nav">
+              <button className="link" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Пред.</button>
+              {weekOffset !== 0 && (
+                <button className="link" onClick={() => setWeekOffset(0)}>Текущая</button>
+              )}
+              <button className="link" onClick={() => setWeekOffset((w) => Math.min(w + 1, 0))}>След. &rarr;</button>
+            </div>
           </div>
         )}
       </header>
@@ -265,6 +325,7 @@ export default function App() {
 
       <nav className="tabs">
         <button className={tab === 'grades' ? 'active' : ''} onClick={() => setTab('grades')}>Оценки</button>
+        <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>Статистика</button>
         <button className={tab === 'subjects' ? 'active' : ''} onClick={() => setTab('subjects')}>Предметы</button>
         <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>Настройки</button>
       </nav>
@@ -272,6 +333,7 @@ export default function App() {
       {tab === 'grades' && report && (
         <GradesTab subjects={subjects} report={report} reload={reload} />
       )}
+      {tab === 'stats' && <StatsTab stats={stats} />}
       {tab === 'subjects' && <SubjectsTab subjects={subjects} reload={reload} />}
       {tab === 'settings' && settings && <SettingsTab settings={settings} reload={reload} />}
     </div>
