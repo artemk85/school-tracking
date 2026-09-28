@@ -44,6 +44,7 @@ export const api = {
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   me: () => request('/auth/me'),
+  changePassword: (data) => request('/auth/password', { method: 'PUT', body: JSON.stringify(data) }),
 
   children: () => request('/children'),
   createChild: (data) => request('/children', { method: 'POST', body: JSON.stringify(data) }),

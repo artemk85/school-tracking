@@ -352,6 +352,85 @@ function SettingsTab({ settings, reload }) {
   );
 }
 
+function ProfileTab({ user }) {
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  function change(field) {
+    return (e) => setForm({ ...form, [field]: e.target.value });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+    setSaved(false);
+    if (form.newPassword !== form.confirm) {
+      setError('Новый пароль и подтверждение не совпадают');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.changePassword({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+      setForm({ currentPassword: '', newPassword: '', confirm: '' });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Профиль</h2>
+      <p className="muted">
+        Вы вошли как <strong>{user.displayName || user.username}</strong> ({user.role === 'PARENT' ? 'родитель' : 'ученик'}).
+      </p>
+      <h3>Смена пароля</h3>
+      <form onSubmit={submit} className="form">
+        <label>
+          Текущий пароль
+          <input
+            type="password"
+            value={form.currentPassword}
+            onChange={change('currentPassword')}
+            required
+            autoComplete="current-password"
+          />
+        </label>
+        <label>
+          Новый пароль
+          <input
+            type="password"
+            value={form.newPassword}
+            onChange={change('newPassword')}
+            required
+            minLength={6}
+            autoComplete="new-password"
+          />
+        </label>
+        <label>
+          Подтверждение нового пароля
+          <input
+            type="password"
+            value={form.confirm}
+            onChange={change('confirm')}
+            required
+            minLength={6}
+            autoComplete="new-password"
+          />
+        </label>
+        <button type="submit" disabled={busy}>{busy ? 'Сохраняем…' : 'Сменить пароль'}</button>
+        {saved && <span className="ok">Пароль изменён</span>}
+        {error && <p className="error">{error}</p>}
+      </form>
+    </section>
+  );
+}
+
 function ChildrenTab({ children, reload }) {
   const [form, setForm] = useState({ username: '', password: '', displayName: '' });
   const [error, setError] = useState('');
@@ -595,6 +674,7 @@ export default function App() {
         {isParent && (
           <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>Настройки</button>
         )}
+        <button className={tab === 'profile' ? 'active' : ''} onClick={() => setTab('profile')}>Профиль</button>
       </nav>
 
       {tab === 'grades' && noChild && (
@@ -609,6 +689,7 @@ export default function App() {
       {tab === 'children' && isParent && <ChildrenTab children={children} reload={reload} />}
       {tab === 'subjects' && isParent && <SubjectsTab subjects={subjects} reload={reload} />}
       {tab === 'settings' && isParent && settings && <SettingsTab settings={settings} reload={reload} />}
+      {tab === 'profile' && <ProfileTab user={user} />}
     </div>
   );
 }

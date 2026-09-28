@@ -37,6 +37,9 @@ API:
 * `GET/POST/PUT/DELETE /api/subjects` — предметы
 * `GET /api/report/week?date=YYYY-MM-DD` — отчёт за неделю
 * `GET/PUT /api/settings` — настройки сумм и коэффициентов
+* `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` — авторизация (JWT)
+* `PUT /api/auth/password` — смена пароля текущего пользователя
+* `GET/POST/DELETE /api/children` — дети родителя
 
 ## Запуск
 
@@ -65,6 +68,17 @@ docker compose up -d --build
 ```bash
 docker compose up -d db
 ```
+
+Если БД уже содержит данные старого формата (без пользователей), выполните
+миграцию — она создаст родителя `artemk` / `school123` и привяжет к нему
+существующие предметы, настройки и оценки:
+
+```bash
+docker compose exec -T db psql -U school -d school_tracking \
+  < backend/src/main/resources/migration_owner.sql
+```
+
+После входа **сразу смените пароль** в разделе «Профиль».
 
 #### 2. Backend (порт 8080)
 

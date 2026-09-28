@@ -2,6 +2,7 @@ package com.artemk.schooltracking.web;
 
 import com.artemk.schooltracking.domain.User;
 import com.artemk.schooltracking.dto.AuthResponse;
+import com.artemk.schooltracking.dto.ChangePasswordRequest;
 import com.artemk.schooltracking.dto.LoginRequest;
 import com.artemk.schooltracking.dto.RegisterRequest;
 import com.artemk.schooltracking.dto.UserDto;
@@ -47,5 +48,12 @@ public class AuthController {
         User user = userRepository.findById(currentUser.userId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Пользователь не найден"));
         return authService.toDto(user);
+    }
+
+    @PutMapping("/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        log.debug("PUT /api/auth/password");
+        authService.changePassword(currentUser.userId(), request);
     }
 }

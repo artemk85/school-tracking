@@ -81,6 +81,18 @@ public class AuthService {
     }
 
     @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Пользователь не найден"));
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Неверный текущий пароль");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        log.info("Пользователь {} сменил пароль", user.getUsername());
+    }
+
+    @Transactional
     public UserDto createChild(Long parentId, CreateChildRequest request) {
         String username = request.username().trim();
         if (userRepository.existsByUsernameIgnoreCase(username)) {
