@@ -112,14 +112,14 @@ public class AuthService {
     }
 
     public List<UserDto> children(Long parentId) {
-        return userRepository.findByParentIdOrderByUsernameAsc(parentId).stream()
+        return userRepository.findByParent_IdOrderByUsernameAsc(parentId).stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Transactional
     public void deleteChild(Long parentId, Long childId) {
-        User child = userRepository.findByIdAndParentId(childId, parentId)
+        User child = userRepository.findByIdAndParent_Id(childId, parentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ребёнок не найден"));
         userRepository.delete(child);
     }

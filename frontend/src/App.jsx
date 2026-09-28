@@ -83,7 +83,7 @@ function AuthScreen({ onAuthenticated }) {
   );
 }
 
-function GradesTab({ subjects, report, reload }) {
+function GradesTab({ subjects, report, reload, childId, childName }) {
   const [subjectId, setSubjectId] = useState('');
   const [value, setValue] = useState(5);
   const [date, setDate] = useState(todayISO());
@@ -97,7 +97,12 @@ function GradesTab({ subjects, report, reload }) {
     e.preventDefault();
     setError('');
     try {
-      await api.createGrade({ subjectId: Number(subjectId), value: Number(value), gradeDate: date });
+      await api.createGrade({
+        subjectId: Number(subjectId),
+        value: Number(value),
+        gradeDate: date,
+        childId,
+      });
       reload();
     } catch (err) {
       setError(err.message);
@@ -107,7 +112,7 @@ function GradesTab({ subjects, report, reload }) {
   return (
     <div className="grid">
       <section className="card">
-        <h2>Добавить оценку</h2>
+        <h2>Добавить оценку{childName ? ` — ${childName}` : ''}</h2>
         <form onSubmit={submit} className="form">
           <label>
             Предмет
@@ -256,11 +261,11 @@ function SubjectsTab({ subjects, reload }) {
   );
 }
 
-function StatsTab({ stats }) {
+function StatsTab({ stats, childName }) {
   if (!stats || stats.weeks.length === 0) {
     return (
       <section className="card">
-        <h2>Статистика за все периоды</h2>
+        <h2>Статистика за все периоды{childName ? ` — ${childName}` : ''}</h2>
         <p className="muted">Пока нет данных.</p>
       </section>
     );
@@ -268,7 +273,7 @@ function StatsTab({ stats }) {
 
   return (
     <section className="card">
-      <h2>Статистика за все периоды</h2>
+      <h2>Статистика за все периоды{childName ? ` — ${childName}` : ''}</h2>
       <table>
         <thead>
           <tr>
@@ -622,6 +627,12 @@ export default function App() {
 
   const totalClass = report && report.total < 0 ? 'neg' : 'pos';
   const noChild = isParent && !activeChildId;
+  const activeChild = isParent ? children.find((c) => c.id === activeChildId) : null;
+  const activeChildName = isParent
+    ? activeChild
+      ? activeChild.displayName || activeChild.username
+      : null
+    : user.displayName || user.username;
 
   return (
     <div className="app">
@@ -683,9 +694,15 @@ export default function App() {
         </section>
       )}
       {tab === 'grades' && report && !noChild && (
-        <GradesTab subjects={subjects} report={report} reload={reload} />
+        <GradesTab
+          subjects={subjects}
+          report={report}
+          reload={reload}
+          childId={isParent ? selectedChildId : undefined}
+          childName={activeChildName}
+        />
       )}
-      {tab === 'stats' && <StatsTab stats={stats} />}
+      {tab === 'stats' && <StatsTab stats={stats} childName={activeChildName} />}
       {tab === 'children' && isParent && <ChildrenTab children={children} reload={reload} />}
       {tab === 'subjects' && isParent && <SubjectsTab subjects={subjects} reload={reload} />}
       {tab === 'settings' && isParent && settings && <SettingsTab settings={settings} reload={reload} />}

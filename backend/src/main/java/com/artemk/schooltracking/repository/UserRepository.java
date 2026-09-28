@@ -11,7 +11,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsernameIgnoreCase(String username);
 
-    List<User> findByParentIdOrderByUsernameAsc(Long parentId);
+    List<User> findByParent_IdOrderByUsernameAsc(Long parentId);
 
-    Optional<User> findByIdAndParentId(Long id, Long parentId);
+    Optional<User> findByIdAndParent_Id(Long id, Long parentId);
 }

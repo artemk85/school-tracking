@@ -91,7 +91,7 @@ public class GradeService {
     }
 
     private User ensureChildBelongsToOwner(Long ownerId, Long childId) {
-        return userRepository.findByIdAndParentId(childId, ownerId)
+        return userRepository.findByIdAndParent_Id(childId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Ребёнок недоступен"));
     }
 }
