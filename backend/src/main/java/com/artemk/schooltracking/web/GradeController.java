@@ -22,16 +22,16 @@ public class GradeController {
     }
 
     @GetMapping
-    public List<GradeDto> all() {
-        log.debug("GET /api/grades — fetching all grades");
-        return gradeService.findAll();
+    public List<GradeDto> all(@RequestParam(required = false) Long childId) {
+        log.debug("GET /api/grades?childId={}", childId);
+        return gradeService.findAll(childId);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public GradeDto create(@Valid @RequestBody GradeRequest request) {
-        log.debug("POST /api/grades — subjectId={}, value={}, date={}",
-                request.subjectId(), request.value(), request.gradeDate());
+        log.debug("POST /api/grades — childId={}, subjectId={}, value={}, date={}",
+                request.childId(), request.subjectId(), request.value(), request.gradeDate());
         return gradeService.create(request);
     }
 

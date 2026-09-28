@@ -2,30 +2,44 @@ package com.artemk.schooltracking.domain;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "settings")
 public class Settings {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
     @Column(name = "five_reward", nullable = false, precision = 10, scale = 2)
-    private java.math.BigDecimal fiveReward = new java.math.BigDecimal("75.00");
+    private BigDecimal fiveReward = new BigDecimal("75.00");
 
     @Column(name = "four_reward", nullable = false, precision = 10, scale = 2)
-    private java.math.BigDecimal fourReward = new java.math.BigDecimal("50.00");
+    private BigDecimal fourReward = new BigDecimal("50.00");
 
     @Column(name = "three_penalty", nullable = false, precision = 10, scale = 2)
-    private java.math.BigDecimal threePenalty = new java.math.BigDecimal("-50.00");
+    private BigDecimal threePenalty = new BigDecimal("-50.00");
 
     @Column(name = "two_penalty", nullable = false, precision = 10, scale = 2)
-    private java.math.BigDecimal twoPenalty = new java.math.BigDecimal("-100.00");
+    private BigDecimal twoPenalty = new BigDecimal("-100.00");
 
     @Column(name = "core_coefficient", nullable = false, precision = 10, scale = 4)
-    private java.math.BigDecimal coreCoefficient = new java.math.BigDecimal("1.0000");
+    private BigDecimal coreCoefficient = new BigDecimal("1.0000");
 
     @Column(name = "other_coefficient", nullable = false, precision = 10, scale = 4)
-    private java.math.BigDecimal otherCoefficient = new java.math.BigDecimal("0.7000");
+    private BigDecimal otherCoefficient = new BigDecimal("0.7000");
+
+    public Settings() {
+    }
+
+    public Settings(User owner) {
+        this.owner = owner;
+    }
 
     public Long getId() {
         return id;
@@ -35,51 +49,59 @@ public class Settings {
         this.id = id;
     }
 
-    public java.math.BigDecimal getFiveReward() {
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
+
+    public BigDecimal getFiveReward() {
         return fiveReward;
     }
 
-    public void setFiveReward(java.math.BigDecimal fiveReward) {
+    public void setFiveReward(BigDecimal fiveReward) {
         this.fiveReward = fiveReward;
     }
 
-    public java.math.BigDecimal getFourReward() {
+    public BigDecimal getFourReward() {
         return fourReward;
     }
 
-    public void setFourReward(java.math.BigDecimal fourReward) {
+    public void setFourReward(BigDecimal fourReward) {
         this.fourReward = fourReward;
     }
 
-    public java.math.BigDecimal getThreePenalty() {
+    public BigDecimal getThreePenalty() {
         return threePenalty;
     }
 
-    public void setThreePenalty(java.math.BigDecimal threePenalty) {
+    public void setThreePenalty(BigDecimal threePenalty) {
         this.threePenalty = threePenalty;
     }
 
-    public java.math.BigDecimal getTwoPenalty() {
+    public BigDecimal getTwoPenalty() {
         return twoPenalty;
     }
 
-    public void setTwoPenalty(java.math.BigDecimal twoPenalty) {
+    public void setTwoPenalty(BigDecimal twoPenalty) {
         this.twoPenalty = twoPenalty;
     }
 
-    public java.math.BigDecimal getCoreCoefficient() {
+    public BigDecimal getCoreCoefficient() {
         return coreCoefficient;
     }
 
-    public void setCoreCoefficient(java.math.BigDecimal coreCoefficient) {
+    public void setCoreCoefficient(BigDecimal coreCoefficient) {
         this.coreCoefficient = coreCoefficient;
     }
 
-    public java.math.BigDecimal getOtherCoefficient() {
+    public BigDecimal getOtherCoefficient() {
         return otherCoefficient;
     }
 
-    public void setOtherCoefficient(java.math.BigDecimal otherCoefficient) {
+    public void setOtherCoefficient(BigDecimal otherCoefficient) {
         this.otherCoefficient = otherCoefficient;
     }
 }

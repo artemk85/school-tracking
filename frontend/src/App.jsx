@@ -1,8 +1,86 @@
-import { useEffect, useMemo, useState } from 'react';
-import { api, money, todayISO, formatDate } from './api.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, money, todayISO, formatDate, getToken, setToken } from './api.js';
 
 function GradeBadge({ value }) {
   return <span className={`grade grade-${value}`}>{value}</span>;
+}
+
+function AuthScreen({ onAuthenticated }) {
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ username: '', password: '', displayName: '' });
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  function change(field) {
+    return (e) => setForm({ ...form, [field]: e.target.value });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const payload =
+        mode === 'register'
+          ? { username: form.username, password: form.password, displayName: form.displayName }
+          : { username: form.username, password: form.password };
+      const res = mode === 'register' ? await api.register(payload) : await api.login(payload);
+      setToken(res.token);
+      onAuthenticated(res.user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="card auth-card">
+        <h1>Поощрение школьника</h1>
+        <p className="muted">Войдите, чтобы вводить оценки и следить за статистикой.</p>
+
+        <div className="auth-tabs">
+          <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Вход</button>
+          <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>
+            Регистрация родителя
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="form">
+          <label>
+            Логин
+            <input value={form.username} onChange={change('username')} required minLength={3} autoComplete="username" />
+          </label>
+          <label>
+            Пароль
+            <input
+              type="password"
+              value={form.password}
+              onChange={change('password')}
+              required
+              minLength={6}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+            />
+          </label>
+          {mode === 'register' && (
+            <label>
+              Имя (необязательно)
+              <input value={form.displayName} onChange={change('displayName')} autoComplete="name" />
+            </label>
+          )}
+          <button type="submit" disabled={busy}>{busy ? 'Подождите…' : mode === 'register' ? 'Создать аккаунт' : 'Войти'}</button>
+          {error && <p className="error">{error}</p>}
+        </form>
+
+        {mode === 'login' && (
+          <p className="muted note">
+            Аккаунт ребёнка создаёт родитель в разделе «Дети».
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function GradesTab({ subjects, report, reload }) {
@@ -128,6 +206,15 @@ function SubjectsTab({ subjects, reload }) {
     reload();
   }
 
+  async function remove(s) {
+    try {
+      await api.deleteSubject(s.id);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <section className="card">
       <h2>Предметы</h2>
@@ -157,7 +244,7 @@ function SubjectsTab({ subjects, reload }) {
                 <button className="link" onClick={() => toggleCore(s)}>
                   сделать {s.core ? 'обычным' : 'основным'}
                 </button>
-                <button className="link danger" onClick={() => api.deleteSubject(s.id).then(reload)}>
+                <button className="link danger" onClick={() => remove(s)}>
                   удалить
                 </button>
               </td>
@@ -265,8 +352,93 @@ function SettingsTab({ settings, reload }) {
   );
 }
 
+function ChildrenTab({ children, reload }) {
+  const [form, setForm] = useState({ username: '', password: '', displayName: '' });
+  const [error, setError] = useState('');
+  const [created, setCreated] = useState('');
+
+  function change(field) {
+    return (e) => setForm({ ...form, [field]: e.target.value });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+    setCreated('');
+    try {
+      const child = await api.createChild(form);
+      setCreated(`Аккаунт «${child.username}» создан. Передайте ребёнку логин и пароль.`);
+      setForm({ username: '', password: '', displayName: '' });
+      reload();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function remove(child) {
+    if (!confirm(`Удалить ребёнка «${child.displayName || child.username}» вместе с его оценками?`)) return;
+    try {
+      await api.deleteChild(child.id);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Дети</h2>
+      <p className="muted">Создайте учётную запись — ребёнок войдёт под ней и сможет вводить свои оценки.</p>
+      <form onSubmit={submit} className="form inline">
+        <input placeholder="Логин ребёнка" value={form.username} onChange={change('username')} required minLength={3} />
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={form.password}
+          onChange={change('password')}
+          required
+          minLength={6}
+        />
+        <input placeholder="Имя (необязательно)" value={form.displayName} onChange={change('displayName')} />
+        <button type="submit">Создать аккаунт</button>
+      </form>
+      {error && <p className="error">{error}</p>}
+      {created && <p className="ok">{created}</p>}
+      <table>
+        <thead>
+          <tr>
+            <th>Логин</th>
+            <th>Имя</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {children.length === 0 && (
+            <tr>
+              <td colSpan={3} className="muted">Пока нет добавленных детей.</td>
+            </tr>
+          )}
+          {children.map((c) => (
+            <tr key={c.id}>
+              <td>{c.username}</td>
+              <td>{c.displayName}</td>
+              <td className="actions">
+                <button className="link danger" onClick={() => remove(c)}>удалить</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [booting, setBooting] = useState(true);
   const [tab, setTab] = useState('grades');
+  const [children, setChildren] = useState([]);
+  const [selectedChildId, setSelectedChildId] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [report, setReport] = useState(null);
   const [settings, setSettings] = useState(null);
@@ -274,51 +446,139 @@ export default function App() {
   const [error, setError] = useState('');
   const [weekOffset, setWeekOffset] = useState(0);
 
+  const isParent = user?.role === 'PARENT';
+  const activeChildId = isParent ? selectedChildId : user?.id;
+
   const weekDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + weekOffset * 7);
     return d.toISOString().slice(0, 10);
   }, [weekOffset]);
 
+  const reloadChildren = useCallback(async () => {
+    if (!isParent) return [];
+    const list = await api.children();
+    setChildren(list);
+    setSelectedChildId((current) => {
+      if (current && list.some((c) => c.id === current)) return current;
+      return list.length ? list[0].id : null;
+    });
+    return list;
+  }, [isParent]);
+
+  const reloadData = useCallback(async (childId) => {
+    if (!childId) {
+      setSubjects([]);
+      setReport(null);
+      setStats(null);
+      return;
+    }
+    const [s, r, cfg, st] = await Promise.all([
+      api.subjects(),
+      api.weekReport(weekDate, childId),
+      api.settings(),
+      api.allStats(childId),
+    ]);
+    setSubjects(s);
+    setReport(r);
+    setSettings(cfg);
+    setStats(st);
+  }, [weekDate]);
+
+  useEffect(() => {
+    (async () => {
+      if (getToken()) {
+        try {
+          const me = await api.me();
+          setUser(me);
+        } catch {
+          setToken(null);
+        }
+      }
+      setBooting(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        setError('');
+        if (isParent) await reloadChildren();
+        await reloadData(isParent ? selectedChildId : user.id);
+      } catch (err) {
+        setError(err.message);
+      }
+    })();
+  }, [user, isParent, selectedChildId, reloadChildren, reloadData]);
+
   async function reload() {
     try {
-      const [s, r, cfg, st] = await Promise.all([api.subjects(), api.weekReport(weekDate), api.settings(), api.allStats()]);
-      setSubjects(s);
-      setReport(r);
-      setSettings(cfg);
-      setStats(st);
       setError('');
+      if (isParent) await reloadChildren();
+      await reloadData(activeChildId);
     } catch (err) {
       setError(err.message);
     }
   }
 
-  useEffect(() => {
-    reload();
-  }, [weekDate]);
+  function logout() {
+    setToken(null);
+    setUser(null);
+    setChildren([]);
+    setSelectedChildId(null);
+    setSubjects([]);
+    setReport(null);
+    setStats(null);
+    setSettings(null);
+  }
+
+  if (booting) {
+    return <div className="auth-wrap"><p className="muted">Загрузка…</p></div>;
+  }
+
+  if (!user) {
+    return <AuthScreen onAuthenticated={setUser} />;
+  }
 
   const totalClass = report && report.total < 0 ? 'neg' : 'pos';
+  const noChild = isParent && !activeChildId;
 
   return (
     <div className="app">
       <header>
         <div>
           <h1>Поощрение школьника</h1>
-          <p className="muted">Пятибалльная система · недельный расчёт</p>
+          <p className="muted">
+            {user.displayName || user.username} · {isParent ? 'родитель' : 'ученик'}
+          </p>
         </div>
-        {report && (
-          <div className="total">
-            <span className="muted">Итого за неделю</span>
-            <strong className={totalClass}>{money(report.total)}</strong>
-            <div className="week-nav">
-              <button className="link" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Пред.</button>
-              {weekOffset !== 0 && (
-                <button className="link" onClick={() => setWeekOffset(0)}>Текущая</button>
-              )}
-              <button className="link" onClick={() => setWeekOffset((w) => Math.min(w + 1, 0))}>След. &rarr;</button>
+        <div className="header-right">
+          {isParent && children.length > 0 && (
+            <label className="child-select">
+              Ребёнок
+              <select value={selectedChildId ?? ''} onChange={(e) => setSelectedChildId(Number(e.target.value))}>
+                {children.map((c) => (
+                  <option key={c.id} value={c.id}>{c.displayName || c.username}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {report && !noChild && (
+            <div className="total">
+              <span className="muted">Итого за неделю</span>
+              <strong className={totalClass}>{money(report.total)}</strong>
+              <div className="week-nav">
+                <button className="link" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Пред.</button>
+                {weekOffset !== 0 && (
+                  <button className="link" onClick={() => setWeekOffset(0)}>Текущая</button>
+                )}
+                <button className="link" onClick={() => setWeekOffset((w) => Math.min(w + 1, 0))}>След. &rarr;</button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <button className="link logout" onClick={logout}>Выйти</button>
+        </div>
       </header>
 
       {error && <p className="error box">{error}</p>}
@@ -326,16 +586,29 @@ export default function App() {
       <nav className="tabs">
         <button className={tab === 'grades' ? 'active' : ''} onClick={() => setTab('grades')}>Оценки</button>
         <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>Статистика</button>
-        <button className={tab === 'subjects' ? 'active' : ''} onClick={() => setTab('subjects')}>Предметы</button>
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>Настройки</button>
+        {isParent && (
+          <button className={tab === 'children' ? 'active' : ''} onClick={() => setTab('children')}>Дети</button>
+        )}
+        {isParent && (
+          <button className={tab === 'subjects' ? 'active' : ''} onClick={() => setTab('subjects')}>Предметы</button>
+        )}
+        {isParent && (
+          <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>Настройки</button>
+        )}
       </nav>
 
-      {tab === 'grades' && report && (
+      {tab === 'grades' && noChild && (
+        <section className="card">
+          <p className="muted">Сначала создайте аккаунт ребёнка в разделе «Дети».</p>
+        </section>
+      )}
+      {tab === 'grades' && report && !noChild && (
         <GradesTab subjects={subjects} report={report} reload={reload} />
       )}
       {tab === 'stats' && <StatsTab stats={stats} />}
-      {tab === 'subjects' && <SubjectsTab subjects={subjects} reload={reload} />}
-      {tab === 'settings' && settings && <SettingsTab settings={settings} reload={reload} />}
+      {tab === 'children' && isParent && <ChildrenTab children={children} reload={reload} />}
+      {tab === 'subjects' && isParent && <SubjectsTab subjects={subjects} reload={reload} />}
+      {tab === 'settings' && isParent && settings && <SettingsTab settings={settings} reload={reload} />}
     </div>
   );
 }

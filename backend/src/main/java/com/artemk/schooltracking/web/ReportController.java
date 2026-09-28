@@ -1,11 +1,13 @@
 package com.artemk.schooltracking.web;
 
-import com.artemk.schooltracking.domain.Settings;
 import com.artemk.schooltracking.dto.AllTimeStats;
+import com.artemk.schooltracking.dto.SettingsDto;
 import com.artemk.schooltracking.dto.WeeklyReport;
+import com.artemk.schooltracking.service.CurrentUser;
 import com.artemk.schooltracking.service.RewardService;
 import com.artemk.schooltracking.service.SettingsService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,34 +19,44 @@ public class ReportController {
 
     private final RewardService rewardService;
     private final SettingsService settingsService;
+    private final CurrentUser currentUser;
 
-    public ReportController(RewardService rewardService, SettingsService settingsService) {
+    public ReportController(RewardService rewardService,
+                            SettingsService settingsService,
+                            CurrentUser currentUser) {
         this.rewardService = rewardService;
         this.settingsService = settingsService;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/report/week")
-    public WeeklyReport week(@RequestParam(required = false) String date) {
+    public WeeklyReport week(@RequestParam(required = false) String date,
+                             @RequestParam(required = false) Long childId) {
         LocalDate reference = (date == null || date.isBlank()) ? LocalDate.now() : LocalDate.parse(date);
-        log.debug("GET /api/report/week?date={}", reference);
-        return rewardService.buildWeeklyReport(reference, settingsService.get());
+        Long ownerId = currentUser.ownerId();
+        Long effectiveChild = currentUser.effectiveChildId(childId);
+        log.debug("GET /api/report/week?date={}&childId={}", reference, effectiveChild);
+        return rewardService.buildWeeklyReport(ownerId, effectiveChild, reference, settingsService.get(ownerId));
     }
 
     @GetMapping("/stats/all")
-    public AllTimeStats allStats() {
-        log.debug("GET /api/stats/all");
-        return rewardService.buildAllTimeStats(settingsService.get());
+    public AllTimeStats allStats(@RequestParam(required = false) Long childId) {
+        Long ownerId = currentUser.ownerId();
+        Long effectiveChild = currentUser.effectiveChildId(childId);
+        log.debug("GET /api/stats/all?childId={}", effectiveChild);
+        return rewardService.buildAllTimeStats(ownerId, effectiveChild, settingsService.get(ownerId));
     }
 
     @GetMapping("/settings")
-    public Settings settings() {
+    public SettingsDto settings() {
         log.debug("GET /api/settings");
-        return settingsService.get();
+        return SettingsDto.from(settingsService.get(currentUser.ownerId()));
     }
 
     @PutMapping("/settings")
-    public Settings updateSettings(@RequestBody Settings settings) {
-        log.debug("PUT /api/settings — {}", settings);
-        return settingsService.update(settings);
+    @PreAuthorize("hasRole('PARENT')")
+    public SettingsDto updateSettings(@RequestBody SettingsDto settings) {
+        log.debug("PUT /api/settings");
+        return settingsService.update(currentUser.ownerId(), settings);
     }
 }

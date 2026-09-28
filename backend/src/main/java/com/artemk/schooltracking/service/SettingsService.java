@@ -1,13 +1,14 @@
 package com.artemk.schooltracking.service;
 
 import com.artemk.schooltracking.domain.Settings;
+import com.artemk.schooltracking.dto.SettingsDto;
 import com.artemk.schooltracking.repository.SettingsRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class SettingsService {
-
-    private static final Long SETTINGS_ID = 1L;
 
     private final SettingsRepository settingsRepository;
 
@@ -15,19 +16,14 @@ public class SettingsService {
         this.settingsRepository = settingsRepository;
     }
 
-    public Settings get() {
-        return settingsRepository.findById(SETTINGS_ID)
-                .orElseThrow(() -> new IllegalStateException("Настройки не инициализированы"));
+    public Settings get(Long ownerId) {
+        return settingsRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Настройки не найдены"));
     }
 
-    public Settings update(Settings incoming) {
-        Settings settings = get();
-        settings.setFiveReward(incoming.getFiveReward());
-        settings.setFourReward(incoming.getFourReward());
-        settings.setThreePenalty(incoming.getThreePenalty());
-        settings.setTwoPenalty(incoming.getTwoPenalty());
-        settings.setCoreCoefficient(incoming.getCoreCoefficient());
-        settings.setOtherCoefficient(incoming.getOtherCoefficient());
-        return settingsRepository.save(settings);
+    public SettingsDto update(Long ownerId, SettingsDto incoming) {
+        Settings settings = get(ownerId);
+        incoming.applyTo(settings);
+        return SettingsDto.from(settingsRepository.save(settings));
     }
 }

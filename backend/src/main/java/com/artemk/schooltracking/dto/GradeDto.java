@@ -5,6 +5,8 @@ import java.time.LocalDate;
 
 public record GradeDto(
         Long id,
+        Long childId,
+        String childName,
         Long subjectId,
         String subjectName,
         boolean core,

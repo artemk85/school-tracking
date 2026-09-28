@@ -44,6 +44,52 @@ h2 { margin: 0 0 16px; font-size: 18px; }
 .total { text-align: right; display: flex; flex-direction: column; }
 .total strong { font-size: 28px; }
 
+.header-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.child-select {
+  min-width: 180px;
+}
+
+.logout { align-self: center; font-size: 14px; }
+
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card { width: 100%; max-width: 420px; }
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.auth-tabs button {
+  flex: 1;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.auth-tabs button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .tabs {
   display: flex;
   gap: 8px;

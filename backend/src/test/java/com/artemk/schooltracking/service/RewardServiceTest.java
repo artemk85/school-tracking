@@ -2,6 +2,7 @@ package com.artemk.schooltracking.service;
 
 import com.artemk.schooltracking.domain.Settings;
 import com.artemk.schooltracking.domain.Subject;
+import com.artemk.schooltracking.domain.User;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ class RewardServiceTest {
 
     private final RewardService rewardService = new RewardService(null);
     private final Settings settings = new Settings();
+    private final User owner = new User();
 
     private static BigDecimal bd(String value) {
         return new BigDecimal(value);
@@ -19,7 +21,7 @@ class RewardServiceTest {
 
     @Test
     void twoFivesFixATwoToOneFourReward() {
-        Subject math = new Subject("Математика", true);
+        Subject math = new Subject(owner, "Математика", true);
 
         BigDecimal two = rewardService.amountFor(2, math, settings);
         BigDecimal five = rewardService.amountFor(5, math, settings);
@@ -31,8 +33,8 @@ class RewardServiceTest {
 
     @Test
     void coreAndOtherSubjectsHaveDifferentCoefficients() {
-        Subject math = new Subject("Математика", true);
-        Subject art = new Subject("ИЗО", false);
+        Subject math = new Subject(owner, "Математика", true);
+        Subject art = new Subject(owner, "ИЗО", false);
 
         assertEquals(bd("50.00"), rewardService.amountFor(4, math, settings));
         assertEquals(bd("35.00"), rewardService.amountFor(4, art, settings));

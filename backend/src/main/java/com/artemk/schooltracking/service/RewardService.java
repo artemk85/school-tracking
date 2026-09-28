@@ -3,6 +3,7 @@ package com.artemk.schooltracking.service;
 import com.artemk.schooltracking.domain.Grade;
 import com.artemk.schooltracking.domain.Settings;
 import com.artemk.schooltracking.domain.Subject;
+import com.artemk.schooltracking.domain.User;
 import com.artemk.schooltracking.dto.GradeDto;
 import com.artemk.schooltracking.dto.SubjectWeeklyResult;
 import com.artemk.schooltracking.dto.WeeklyReport;
@@ -69,8 +70,11 @@ public class RewardService {
 
     public GradeDto toDto(Grade grade, Settings settings) {
         Subject subject = grade.getSubject();
+        User child = grade.getChild();
         return new GradeDto(
                 grade.getId(),
+                child == null ? null : child.getId(),
+                child == null ? null : child.getDisplayName(),
                 subject.getId(),
                 subject.getName(),
                 subject.isCore(),
@@ -81,13 +85,13 @@ public class RewardService {
         );
     }
 
-    public WeeklyReport buildWeeklyReport(LocalDate anyDateInWeek, Settings settings) {
+    public WeeklyReport buildWeeklyReport(Long ownerId, Long childId, LocalDate anyDateInWeek, Settings settings) {
         LocalDate start = weekStart(anyDateInWeek);
         LocalDate end = start.plusDays(6);
 
-        log.debug("Building weekly report: {} — {}, settings={}", start, end, settings);
+        log.debug("Building weekly report: owner={}, child={}, {} — {}, settings={}", ownerId, childId, start, end, settings);
 
-        List<Grade> grades = gradeRepository.findByGradeDateBetween(start, end);
+        List<Grade> grades = gradeRepository.findByOwnerIdAndChildIdAndGradeDateBetween(ownerId, childId, start, end);
         log.debug("Found {} grades in date range", grades.size());
 
         Map<Long, List<Grade>> grouped = grades.stream()
@@ -128,8 +132,8 @@ public class RewardService {
         return new WeeklyReport(start, end, total, subjects);
     }
 
-    public AllTimeStats buildAllTimeStats(Settings settings) {
-        List<Grade> allGrades = gradeRepository.findAll();
+    public AllTimeStats buildAllTimeStats(Long ownerId, Long childId, Settings settings) {
+        List<Grade> allGrades = gradeRepository.findByOwnerIdAndChildId(ownerId, childId);
 
         if (allGrades.isEmpty()) {
             return new AllTimeStats(List.of(), BigDecimal.ZERO.setScale(SCALE, RoundingMode.HALF_UP), 0);

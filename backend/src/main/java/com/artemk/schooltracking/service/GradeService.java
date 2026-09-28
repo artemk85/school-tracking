@@ -3,10 +3,12 @@ package com.artemk.schooltracking.service;
 import com.artemk.schooltracking.domain.Grade;
 import com.artemk.schooltracking.domain.Settings;
 import com.artemk.schooltracking.domain.Subject;
+import com.artemk.schooltracking.domain.User;
 import com.artemk.schooltracking.dto.GradeDto;
 import com.artemk.schooltracking.dto.GradeRequest;
 import com.artemk.schooltracking.repository.GradeRepository;
 import com.artemk.schooltracking.repository.SubjectRepository;
+import com.artemk.schooltracking.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,56 +22,76 @@ public class GradeService {
 
     private final GradeRepository gradeRepository;
     private final SubjectRepository subjectRepository;
+    private final UserRepository userRepository;
     private final SettingsService settingsService;
     private final RewardService rewardService;
+    private final CurrentUser currentUser;
 
     public GradeService(GradeRepository gradeRepository,
                         SubjectRepository subjectRepository,
+                        UserRepository userRepository,
                         SettingsService settingsService,
-                        RewardService rewardService) {
+                        RewardService rewardService,
+                        CurrentUser currentUser) {
         this.gradeRepository = gradeRepository;
         this.subjectRepository = subjectRepository;
+        this.userRepository = userRepository;
         this.settingsService = settingsService;
         this.rewardService = rewardService;
+        this.currentUser = currentUser;
     }
 
-    public List<GradeDto> findAll() {
-        log.debug("Fetching all grades");
-        Settings settings = settingsService.get();
-        return gradeRepository.findAll().stream()
+    public List<GradeDto> findAll(Long requestedChildId) {
+        Long ownerId = currentUser.ownerId();
+        Long childId = currentUser.effectiveChildId(requestedChildId);
+        ensureChildBelongsToOwner(ownerId, childId);
+        log.debug("Fetching grades for owner={}, child={}", ownerId, childId);
+        Settings settings = settingsService.get(ownerId);
+        return gradeRepository.findByOwnerIdAndChildId(ownerId, childId).stream()
                 .sorted((a, b) -> b.getGradeDate().compareTo(a.getGradeDate()))
                 .map(g -> rewardService.toDto(g, settings))
                 .toList();
     }
 
     public GradeDto create(GradeRequest request) {
-        log.debug("Creating grade: subjectId={}, value={}, date={}",
-                request.subjectId(), request.value(), request.gradeDate());
-        Subject subject = subjectRepository.findById(request.subjectId())
+        Long ownerId = currentUser.ownerId();
+        Long childId = currentUser.effectiveChildId(request.childId());
+        User child = ensureChildBelongsToOwner(ownerId, childId);
+        Subject subject = subjectRepository.findByIdAndOwnerId(request.subjectId(), ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Предмет не найден"));
-        Grade grade = new Grade(subject, request.value(), request.gradeDate());
+        log.debug("Creating grade: owner={}, child={}, subjectId={}, value={}, date={}",
+                ownerId, childId, request.subjectId(), request.value(), request.gradeDate());
+        User owner = child.getParent() != null ? child.getParent() : child;
+        Grade grade = new Grade(owner, child, subject, request.value(), request.gradeDate());
         Grade saved = gradeRepository.save(grade);
-        return rewardService.toDto(saved, settingsService.get());
+        return rewardService.toDto(saved, settingsService.get(ownerId));
     }
 
     public GradeDto update(Long id, GradeRequest request) {
-        log.debug("Updating grade {}: subjectId={}, value={}, date={}",
-                id, request.subjectId(), request.value(), request.gradeDate());
-        Grade grade = gradeRepository.findById(id)
+        Long ownerId = currentUser.ownerId();
+        Grade grade = gradeRepository.findByIdAndOwnerId(id, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Оценка не найдена"));
-        Subject subject = subjectRepository.findById(request.subjectId())
+        Long childId = currentUser.effectiveChildId(request.childId() != null ? request.childId() : grade.getChild().getId());
+        ensureChildBelongsToOwner(ownerId, childId);
+        Subject subject = subjectRepository.findByIdAndOwnerId(request.subjectId(), ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Предмет не найден"));
+        log.debug("Updating grade {}: owner={}, child={}", id, ownerId, childId);
         grade.setSubject(subject);
         grade.setValue(request.value());
         grade.setGradeDate(request.gradeDate());
-        return rewardService.toDto(gradeRepository.save(grade), settingsService.get());
+        return rewardService.toDto(gradeRepository.save(grade), settingsService.get(ownerId));
     }
 
     public void delete(Long id) {
-        log.debug("Deleting grade {}", id);
-        if (!gradeRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Оценка не найдена");
-        }
-        gradeRepository.deleteById(id);
+        Long ownerId = currentUser.ownerId();
+        log.debug("Deleting grade {} for owner={}", id, ownerId);
+        Grade grade = gradeRepository.findByIdAndOwnerId(id, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Оценка не найдена"));
+        gradeRepository.delete(grade);
+    }
+
+    private User ensureChildBelongsToOwner(Long ownerId, Long childId) {
+        return userRepository.findByIdAndParentId(childId, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Ребёнок недоступен"));
     }
 }

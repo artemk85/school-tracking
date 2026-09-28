@@ -9,6 +9,7 @@ import java.time.LocalDate;
 public record GradeRequest(
         @NotNull Long subjectId,
         @Min(2) @Max(5) int value,
-        @NotNull LocalDate gradeDate
+        @NotNull LocalDate gradeDate,
+        Long childId
 ) {
 }

@@ -19,6 +19,12 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-in-production-school-tracking-secret-key-256bit}
+      ttl-hours: ${JWT_TTL_HOURS:168}
+
 logging:
   level:
     com.artemk.schooltracking: DEBUG
